@@ -167,4 +167,4 @@ The OpenAI key is read once and passed to `OpenAI(api_key=key)`. The client auth
 
 `from langfuse.openai import OpenAI` records model calls. `get_client()` reads Langfuse credentials, and `flush()` sends queued traces before the script exits. See the [official Langfuse integration guide](https://langfuse.com/integrations/model-providers/openai-py).
 
-To customize the demo, edit `TESTS`, `PROMPTS`, and the matching `WRONG_CLAIMS`. For realistic comparisons, edit `TESTS` and `COMPARISON_PROMPTS`. Keep `JUDGE_MODEL` fixed when comparing changes. Each run generates fresh A and B answers; earlier runs remain in your local, Git-ignored `results/` folder for reference.
+To customize the demo, edit `TESTS`, `PROMPTS`, and the matching `WRONG_CLAIMS`. For realistic comparisons, edit `TESTS` and `COMPARISON_PROMPTS`. Keep `JUDGE_MODEL` fixed when comparing changes. Each run generates fresh A and B answers; earlier runs remain in your local, Git-ignored `results/` folder for my personal reference.
