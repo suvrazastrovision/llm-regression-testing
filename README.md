@@ -30,7 +30,7 @@ The two questions in `TESTS` cover:
 Drug-discovery implications are interpretations of these experiments. The judge
 checks whether answers explain the mechanisms and preserve the mouse-to-human
 limitations. The live models do not browse these papers; the supplied answer keys
-guide scoring. Prompt B allows 220 words for a scientific explanation.
+guide scoring. Prompt B allows 100 words for a scientific explanation.
 
 ## Setup
 
