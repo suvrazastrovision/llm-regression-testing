@@ -1,6 +1,6 @@
 ﻿# LLM Regression Testing
 
-This example demonstrates how regression testing can flag factual errors and hallucinations in AI-generated scientific explanations.
+This tutorial demonstrates how regression testing can flag factual errors and hallucinations in AI-generated scientific explanations.
 Comparing answers against research-based facts helps researchers spot misleading mechanisms and unsupported clinical claims before relying on them.
 
 ## Overview
