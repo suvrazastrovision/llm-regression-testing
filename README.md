@@ -1,4 +1,7 @@
-﻿# Regression Testing Example User Case in Drug Discovery Research
+﻿# LLM Regression Testing in Drug Discovery Research
+
+This example demonstrates how regression testing can flag factual errors in AI-generated drug-discovery explanations.
+Comparing answers against research-based facts helps researchers spot misleading mechanisms and unsupported clinical claims before relying on them.
 
 This example asks two advanced neuropharmacology questions using prompts A and B. OpenAI generates
 the answers, then a separate model request scores accuracy and clarity from 0 to 2.
