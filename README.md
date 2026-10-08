@@ -25,6 +25,8 @@ Both prompts allow up to **100 words**. Answers come from live API requests; the
 
 B is a **negative control**: an intentionally flawed example used to check whether grading detects an error. This is an offline prompt comparison, not a randomized user experiment or a fair comparison of two useful prompts.
 
+Use `--mode comparison` to compare two realistic prompts instead. A is a basic scientific-answer prompt; B asks explicitly for mechanisms, defined abbreviations, uncertainty, and limits of human translation. Neither receives the answer key or deliberately false claims. Edit `COMPARISON_PROMPTS` to evaluate your own baseline and candidate. The default remains `--mode demo`.
+
 ## Setup and run
 
 ### 1. Install dependencies
@@ -75,7 +77,15 @@ With uv:
 uv run --locked drug_discovery.py
 ```
 
-Each complete run makes **four answer requests and four judge requests**. API usage is billed to your OpenAI API account.
+Each complete default run makes **four answer requests and four judge requests**. API usage is billed to your OpenAI API account. SDK retries can add attempts.
+
+For a realistic comparison with three independent trials per question and version:
+
+```powershell
+.\.venv\Scripts\python.exe drug_discovery.py --mode comparison --repeats 3
+```
+
+This makes twelve answer requests and twelve judge requests. `--repeats` must be a positive integer; its default is 1. A/B execution order alternates across questions and trials.
 
 ## Read the results
 
@@ -88,26 +98,44 @@ Each complete run makes **four answer requests and four judge requests**. API us
 | 2 | All required facts without contradictions. | Clear scientific reasoning with essential abbreviations defined. |
 
 - **Answer PASS:** accuracy is 2; clarity is reported separately.
-- **Regression gate FAIL:** B loses accuracy relative to A on either question, or B receives accuracy 0.
+- **Regression gate FAIL:** B's mean accuracy is lower than A's on either question, or any B trial receives accuracy 0. With one trial, this matches the original rule.
 - **B minus A:** negative accuracy means B scored lower; positive clarity means B scored higher.
 
 An incomplete answer can fail its own accuracy check while the regression gate passes if B matches A and neither has a major error.
 
+Process exit codes are **0** for a passing gate, **2** for a failed gate, and **1** for configuration, request, response-validation, or file errors. Invalid command-line arguments also exit with 2, following Python's argument-parser convention. A failed gate exits with 2 even in the deliberate-error demo, where detecting a failure is expected. CI can use the nonzero code to reject a candidate.
+
 ### Saved results and Langfuse
 
-Each run creates a new JSON file in `results/`, preserving prompts, answers, scores, reasons, and model settings.
+Each run creates a new JSON file in `results/`, preserving prompts, answers, scores, reasons, model names, mode, and trial numbers. The file remains a list of answer records.
 
 Open your Langfuse project's **Traces** page:
 
 - `drug-discovery-A` and `drug-discovery-B` identify the prompt versions.
 - Each trace contains `generate-answer` and `score-answer` calls, plus numeric accuracy and clarity scores.
-- The `run` metadata identifies the run. Traces may take a short time to appear.
+- The `run`, `mode`, and `trial` metadata identify the run and individual trials. Traces may take a short time to appear.
 
 Langfuse receives prompts, answers, model usage, and scores. Local results do not contain API keys. If a request fails, collected answers are saved and no complete comparison is printed.
+
+Truncated or content-filtered judge responses produce a diagnostic and exit code 1; they are not treated as valid scores.
 
 ### Interpret with care
 
 The model may correct B's false premise, and the judge can make mistakes. Review the answers and reasons if the expected **A PASS / B FAIL** does not appear. A PASS describes these two cases only.
+
+Repeated trials expose variation, but the mean-based gate is a policy rule, not a statistical significance test. Both modes still cover only two questions. The default answer and judge models are the same; set `JUDGE_MODEL` explicitly when evaluating an independent judge and keep it fixed across comparisons.
+
+Before relying on the gate for scientific decisions, broaden the question set and have a qualified reviewer independently score representative correct, incomplete, and incorrect answers. Compare those human labels with the judge's scores, including individual disagreements. No human calibration or scientific validation is claimed by this repository's offline tests.
+
+## Offline tests
+
+The test suite uses Python's standard-library `unittest` and mocked model and tracing clients. It does not read your credentials, make API calls, or upload traces.
+
+```powershell
+.\.venv\Scripts\python.exe -m unittest discover -s tests -v
+```
+
+It checks gate decisions and exit codes, repeated-trial aggregation, invalid and incomplete results, response validation, partial-answer preservation, judge parsing errors, and trace-flush failures.
 
 ## Questions and evidence
 
@@ -126,14 +154,15 @@ Everything is in `drug_discovery.py`:
 | --- | --- |
 | `TESTS` | Questions and required facts. |
 | `PROMPTS` | A uses verified facts; B repeats a false claim. |
+| `COMPARISON_PROMPTS` | Realistic baseline and candidate prompts, without supplied answer keys. |
 | `WRONG_CLAIMS` | Deliberately incorrect examples for B. |
 | `generate_answer()` | Requests an answer from OpenAI. |
 | `score_answer()` | Requests scores and a reason from the judge. |
-| `print_report()` | Compares versions and applies the regression gate. |
+| `print_report()` | Validates complete trials, reports scores, and returns a structured gate result. |
 | `main()` | Loads credentials, runs requests inside traces, and saves results. |
 
 The OpenAI key is read once and passed to `OpenAI(api_key=key)`. The client authenticates each request.
 
 `from langfuse.openai import OpenAI` records model calls. `get_client()` reads Langfuse credentials, and `flush()` sends queued traces before the script exits. See the [official Langfuse integration guide](https://langfuse.com/integrations/model-providers/openai-py).
 
-To customize the example, edit `TESTS`, `PROMPTS`, and the matching `WRONG_CLAIMS`. Keep `JUDGE_MODEL` fixed when comparing changes. Each run generates fresh A and B answers; earlier runs remain in `results/` for reference.
+To customize the demo, edit `TESTS`, `PROMPTS`, and the matching `WRONG_CLAIMS`. For realistic comparisons, edit `TESTS` and `COMPARISON_PROMPTS`. Keep `JUDGE_MODEL` fixed when comparing changes. Each run generates fresh A and B answers; earlier runs remain in `results/` for reference.

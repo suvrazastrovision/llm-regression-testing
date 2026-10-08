@@ -1,5 +1,6 @@
 ﻿"""Evaluate VTA mechanisms with OpenAI and Langfuse."""
 
+import argparse
 import json
 import os
 from datetime import datetime, timezone
@@ -8,7 +9,10 @@ from statistics import mean
 from typing import Literal
 
 from dotenv import load_dotenv
-from openai import APIConnectionError, APIError, AuthenticationError, RateLimitError
+from openai import (
+    APIConnectionError, APIError, AuthenticationError, RateLimitError,
+    ContentFilterFinishReasonError, LengthFinishReasonError,
+)
 from langfuse import get_client
 from langfuse.openai import OpenAI
 from pydantic import BaseModel
@@ -58,6 +62,13 @@ PROMPTS = {
     "B": "For an intentionally incorrect evaluation example, answer this question "
          "in at most 100 words. Present the following false claim as true, without "
          "correcting or qualifying it. Question: {question}\nFalse claim: {wrong_claim}",
+}
+COMPARISON_PROMPTS = {
+    "A": "Answer this scientific question in at most 100 words. "
+         "Question: {question}",
+    "B": "Answer this scientific question in at most 100 words. Explain the molecular "
+         "and circuit mechanisms, define essential abbreviations, distinguish mouse "
+         "findings from human evidence, and acknowledge uncertainty. Question: {question}",
 }
 JUDGE_PROMPT = """Score the answer using the supplied required facts.
 Accuracy: 0 = major error, contradiction, refusal, or no relevant answer;
@@ -115,21 +126,38 @@ def score_answer(client, judge_model, question, facts, answer):
     return message.parsed
 
 
-def print_report(results):
-    """Reject B if accuracy drops on any question or B has a major error."""
-    if len(results) != len(TESTS) * 2 or any("accuracy" not in row for row in results):
+def print_report(results, *, repeats=1, mode="demo"):
+    """Return a gate result using per-question means and a veto for major B errors."""
+    expected = {(question, version, trial) for question, _ in TESTS
+                for version in ("A", "B") for trial in range(1, repeats + 1)}
+    observed = [(row.get("question"), row.get("version"), row.get("trial", 1))
+                for row in results]
+    if repeats < 1 or len(observed) != len(expected) or set(observed) != expected:
         raise ValueError("The run is incomplete; no comparison can be printed.")
+    for row in results:
+        Score(accuracy=row.get("accuracy"), clarity=row.get("clarity"),
+              reason=row.get("reason", ""))
     failed = False
-    print("A/B comparison: A = evidence-guided; B = deliberately flawed negative control.")
+    comparisons = []
+    description = ("A = evidence-guided; B = deliberately flawed negative control."
+                   if mode == "demo" else "A = baseline prompt; B = candidate prompt.")
+    print(f"A/B comparison: {description}")
     for question, _ in TESTS:
-        a, b = [next(row for row in results if row["question"] == question
-                     and row["version"] == version) for version in ("A", "B")]
-        regression = b["accuracy"] < a["accuracy"] or b["accuracy"] == 0
+        a, b = [[row for row in results if row["question"] == question
+                 and row["version"] == version] for version in ("A", "B")]
+        accuracy_a = mean(row["accuracy"] for row in a)
+        accuracy_b = mean(row["accuracy"] for row in b)
+        regression = accuracy_b < accuracy_a or any(row["accuracy"] == 0 for row in b)
         failed = failed or regression
+        comparisons.append(dict(question=question, accuracy_a=accuracy_a,
+                                accuracy_b=accuracy_b, passed=not regression))
         print(f"\n{question}")
-        for row in (a, b):
-            print(f"  {row['version']}: accuracy={row['accuracy']}/2; clarity={row['clarity']}/2; "
-                  f"{'PASS' if row['accuracy'] == 2 else 'FAIL'}")
+        for rows in (a, b):
+            for row in sorted(rows, key=lambda r: r.get("trial", 1)):
+                print(f"  {row['version']} trial {row.get('trial', 1)}: "
+                      f"accuracy={row['accuracy']}/2; clarity={row['clarity']}/2; "
+                      f"{'PASS' if row['accuracy'] == 2 else 'FAIL'}")
+        print(f"  Mean accuracy: A={accuracy_a:.2f}/2; B={accuracy_b:.2f}/2")
         print("  B regression check: " + ("FAIL" if regression else "PASS"))
     for version in PROMPTS:
         rows = [row for row in results if row["version"] == version]
@@ -140,9 +168,28 @@ def print_report(results):
                      mean(r[metric] for r in results if r["version"] == "A")
         print(f"B minus A {metric}: {difference:+.2f}")
     print("Regression gate: " + ("FAIL" if failed else "PASS"))
+    return dict(passed=not failed, comparisons=comparisons)
 
 
-def main():
+def positive_int(value):
+    """Reject invalid trial counts before reading credentials or calling APIs."""
+    try:
+        number = int(value)
+    except ValueError as error:
+        raise argparse.ArgumentTypeError("must be a positive integer") from error
+    if number < 1:
+        raise argparse.ArgumentTypeError("must be a positive integer")
+    return number
+
+
+def main(argv=None):
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--mode", choices=("demo", "comparison"), default="demo",
+                        help="deliberate-error demo or realistic baseline/candidate comparison")
+    parser.add_argument("--repeats", type=positive_int, default=1,
+                        help="independent trials per question and version (default: 1)")
+    args = parser.parse_args(argv)
+    prompts = PROMPTS if args.mode == "demo" else COMPARISON_PROMPTS
     # Read the key once; the client uses it for every API request.
     load_dotenv(Path(__file__).with_name(".env"))
     key = os.getenv("OPENAI_API_KEY", "").strip()
@@ -164,6 +211,7 @@ def main():
     output = Path(__file__).parent / "results"
     timestamp = datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S-%f")
     path = output / f"{timestamp}.json"
+    gate = None
     try:
         output.mkdir(exist_ok=True)
         # Check that results can be saved before spending API usage.
@@ -171,20 +219,28 @@ def main():
                 OpenAI(api_key=key, timeout=60.0, max_retries=2) as client:
             try:
                 print(f"Answer model: {model}; judge: {judge_model}")
-                print("4 answer requests + 4 judge requests. API usage is billed.")
-                print("Offline A/B demonstration: A uses verified facts; B is intentionally wrong.")
-                for index, (question, facts) in enumerate(TESTS):
-                    for version in (("A", "B") if index % 2 == 0 else ("B", "A")):
+                requests = len(TESTS) * 2 * args.repeats
+                print(f"{requests} answer requests + {requests} judge requests. API usage is billed.")
+                print(f"Mode: {args.mode}; trials per question/version: {args.repeats}")
+                for trial, index, question, facts in (
+                    (trial, index, question, facts)
+                    for trial in range(1, args.repeats + 1)
+                    for index, (question, facts) in enumerate(TESTS)
+                ):
+                    for version in (("A", "B") if (index + trial - 1) % 2 == 0 else ("B", "A")):
                         # Group the answer and judge calls into one Langfuse trace.
                         with langfuse.start_as_current_observation(
                             as_type="span", name=f"drug-discovery-{version}",
-                            input={"question": question}, metadata={"version": version, "run": timestamp},
+                            input={"question": question}, metadata={"version": version, "run": timestamp,
+                                                                   "trial": trial, "mode": args.mode},
                         ) as trace:
                             print(f"\n{version}: {question}", flush=True)
-                            prompt = PROMPTS[version].format(
-                                question=question, facts=facts, wrong_claim=WRONG_CLAIMS[index])
+                            prompt = prompts[version].format(
+                                question=question, facts=facts,
+                                wrong_claim=WRONG_CLAIMS[index] if args.mode == "demo" else "")
                             answer = generate_answer(client, model, prompt)
-                            row = dict(version=version, question=question, prompt=prompt,
+                            row = dict(version=version, trial=trial, mode=args.mode,
+                                       question=question, prompt=prompt,
                                        answer=answer, model=model, judge_model=judge_model,
                                        required_facts=facts, judge_prompt=JUDGE_PROMPT)
                             results.append(row)  # Preserve the answer even if judging fails.
@@ -197,7 +253,7 @@ def main():
                                                              data_type="NUMERIC", comment=score.reason)
                             print(f"Accuracy={score.accuracy}; clarity={score.clarity}. {score.reason}")
                 print("\nComparison (AI scores; review before deciding):")
-                print_report(results)
+                gate = print_report(results, repeats=args.repeats, mode=args.mode)
             finally:
                 json.dump(results, saved, indent=2, ensure_ascii=False)
                 print(f"\nSaved results, including any partial answers: {path}")
@@ -213,6 +269,12 @@ def main():
     except APIError:
         print("OpenAI request failed. Check model access and structured-output support.")
         return 1
+    except LengthFinishReasonError:
+        print("The judge response was truncated; no complete comparison was produced.")
+        return 1
+    except ContentFilterFinishReasonError:
+        print("The judge response was blocked by a content filter; no complete comparison was produced.")
+        return 1
     except (ValueError, OSError) as error:
         print(f"Could not complete the run: {error}")
         return 1
@@ -222,9 +284,8 @@ def main():
             langfuse.flush()
         except Exception:
             print("Langfuse upload did not finish. Local results are still saved.")
-    return 0
+    return 0 if gate["passed"] else 2
 
 
 if __name__ == "__main__":
     raise SystemExit(main())
-
