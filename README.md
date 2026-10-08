@@ -59,7 +59,7 @@ LANGFUSE_BASE_URL=https://cloud.langfuse.com
 
 - **OpenAI:** get your key from [API settings](https://platform.openai.com/api-keys).
 - **Langfuse:** create a project and get its public and secret keys from **Project Settings > API Keys**. These are separate from your OpenAI key.
-- **Project URL:** use your Langfuse project's URL. The example uses the EU region; US projects use `https://us.cloud.langfuse.com`. For self-hosting, use your own URL.
+- **Project URL:** use your Langfuse project's URL. The example uses the EU region. For self-hosting, use your own URL.
 
 `.env` is ignored by Git. Existing environment variables take precedence over values in `.env`.
 
