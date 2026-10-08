@@ -1,4 +1,4 @@
-﻿"""Live drug-discovery example: evaluate VTA mechanisms with OpenAI and Langfuse."""
+﻿"""Evaluate VTA mechanisms with OpenAI and Langfuse."""
 
 import json
 import os
@@ -63,7 +63,7 @@ JUDGE_PROMPT = """Score the answer using the supplied required facts.
 Accuracy: 0 = major error, contradiction, refusal, or no relevant answer;
 1 = correct but incomplete; 2 = all required facts without contradictions.
 Clarity: 0 = confusing; 1 = understandable with unexplained technical terms;
-2 = clear molecular and circuit reasoning for a graduate researcher, with essential
+2 = clear molecular and circuit reasoning for a scientific researcher, with essential
 abbreviations defined. Grade meaning, not keywords or exact wording.
 Distinguish mouse experiments from human efficacy and established mechanisms from
 drug-discovery inferences. Claiming these mouse findings prove clinical efficacy,
