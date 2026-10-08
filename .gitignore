@@ -5,3 +5,8 @@
 __pycache__/
 results/
 live-results*/
+
+# Publish only the reviewed sample and its explanation.
+examples/*
+!examples/README.md
+!examples/sample_results.json

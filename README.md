@@ -107,6 +107,8 @@ Process exit codes are **0** for a passing gate, **2** for a failed gate, and **
 
 ### Saved results and Langfuse
 
+The [reviewed public sample](examples/README.md) contains the latest published result and review notes. Other runs stay in the Git-ignored `results/` folder.
+
 Each run creates a new JSON file in `results/`, preserving prompts, answers, scores, reasons, model names, mode, and trial numbers. The file remains a list of answer records.
 
 Open your Langfuse project's **Traces** page:
