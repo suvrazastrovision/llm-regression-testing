@@ -36,6 +36,14 @@ python -m venv .venv
 .\.venv\Scripts\python.exe -m pip install -r requirements.txt
 ```
 
+Alternatively, use uv to install the versions pinned in `uv.lock`:
+
+```powershell
+uv sync --locked
+```
+
+Commit both `pyproject.toml` and `uv.lock` to share the dependency versions.
+
 ### 2. Configure credentials
 
 If `.env` is missing, copy `.env.example` to `.env`. Fill in your credentials:
@@ -59,6 +67,12 @@ LANGFUSE_BASE_URL=https://cloud.langfuse.com
 
 ```powershell
 .\.venv\Scripts\python.exe drug_discovery.py
+```
+
+With uv:
+
+```powershell
+uv run --locked drug_discovery.py
 ```
 
 Each complete run makes **four answer requests and four judge requests**. API usage is billed to your OpenAI API account.
