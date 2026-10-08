@@ -1,6 +1,6 @@
-﻿# LLM Regression Testing in Drug Discovery Research
+﻿# LLM Regression Testing 
 
-This example demonstrates how regression testing can flag factual errors in AI-generated drug-discovery explanations.
+This example demonstrates how regression testing can flag factual errors/ hallucinations in AI-generated scientific explanations.
 Comparing answers against research-based facts helps researchers spot misleading mechanisms and unsupported clinical claims before relying on them.
 
 This example asks two advanced neuropharmacology questions using prompts A and B. OpenAI generates
