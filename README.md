@@ -12,7 +12,7 @@ The example evaluates two advanced neuropharmacology questions about the **ventr
 | Generate | OpenAI answers each question using prompts A and B. |
 | Evaluate | A separate OpenAI request scores accuracy and clarity from 0 to 2. |
 | Compare | Python reports each version's PASS/FAIL, score differences, and the regression gate. |
-| Record | JSON results are saved in `results/`; Langfuse records calls and scores. |
+| Record | The public sample is in [examples/sample_results.json](examples/sample_results.json). New runs save output locally; Langfuse records calls and scores. |
 
 ## A/B demonstration
 
@@ -105,11 +105,11 @@ An incomplete answer can fail its own accuracy check while the regression gate p
 
 Process exit codes are **0** for a passing gate, **2** for a failed gate, and **1** for configuration, request, response-validation, or file errors. Invalid command-line arguments also exit with 2, following Python's argument-parser convention. A failed gate exits with 2 even in the deliberate-error demo, where detecting a failure is expected. CI can use the nonzero code to reject a candidate.
 
-### Saved results and Langfuse
+### Public sample, local output, and Langfuse
 
-The [reviewed public sample](examples/README.md) contains the latest published result and review notes. Other runs stay in the Git-ignored `results/` folder.
+**In this public repository:** [examples/sample_results.json](examples/sample_results.json) contains the reviewed published result. Read the [review notes](examples/README.md) for its context and grading inconsistency.
 
-Each run creates a new JSON file in `results/`, preserving prompts, answers, scores, reasons, model names, mode, and trial numbers. The file remains a list of answer records.
+**On your machine after running the script:** a `results/` folder is created beside `drug_discovery.py`. Each run saves a new JSON file containing prompts, answers, scores, reasons, model names, mode, and trial numbers. This folder is ignored by Git and is intentionally absent from the public repository.
 
 Open your Langfuse project's **Traces** page:
 
@@ -167,4 +167,4 @@ The OpenAI key is read once and passed to `OpenAI(api_key=key)`. The client auth
 
 `from langfuse.openai import OpenAI` records model calls. `get_client()` reads Langfuse credentials, and `flush()` sends queued traces before the script exits. See the [official Langfuse integration guide](https://langfuse.com/integrations/model-providers/openai-py).
 
-To customize the demo, edit `TESTS`, `PROMPTS`, and the matching `WRONG_CLAIMS`. For realistic comparisons, edit `TESTS` and `COMPARISON_PROMPTS`. Keep `JUDGE_MODEL` fixed when comparing changes. Each run generates fresh A and B answers; earlier runs remain in `results/` for reference.
+To customize the demo, edit `TESTS`, `PROMPTS`, and the matching `WRONG_CLAIMS`. For realistic comparisons, edit `TESTS` and `COMPARISON_PROMPTS`. Keep `JUDGE_MODEL` fixed when comparing changes. Each run generates fresh A and B answers; earlier runs remain in your local, Git-ignored `results/` folder for reference.
