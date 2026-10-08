@@ -1,4 +1,4 @@
-﻿# VTA drug discovery with OpenAI and Langfuse
+﻿# Regression Testing Example User Case in Drug Discovery Research
 
 This example asks two advanced neuropharmacology questions using prompts A and B. OpenAI generates
 the answers, then a separate model request scores accuracy and clarity from 0 to 2.
