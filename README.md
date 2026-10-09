@@ -7,4 +7,4 @@ Compare AI-generated scientific answers with OpenAI and Langfuse to detect factu
 
 See the [full documentation](docs/README.md) for setup, usage, scoring, examples, and tests.
 
-Download the [walkthrough code bundle](outputs/blogpost/LLM_Regression_Testing_Walkthrough.zip).
+Download the [walkthrough code bundle](outputs/blogpost/LLM_Regression_Testing_Walkthrough.zip) ([manifest](outputs/blogpost/walkthrough_manifest.json)).
