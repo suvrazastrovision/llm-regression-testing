@@ -1,0 +1,18 @@
+LLM regression testing walkthrough
+Read the accompanying revised Word article for the scientific rationale.
+From this extracted folder in PowerShell:
+python -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt
+.\.venv\Scripts\python.exe -m pip check
+.\.venv\Scripts\python.exe -m unittest discover -s tests -v
+.\.venv\Scripts\python.exe check_gate.py
+.\.venv\Scripts\python.exe inspect_results.py examples/sample_results.json
+The sample inspector exits 2 because the published sample fails its gate.
+For locked installation instead: uv sync --locked
+For live runs: copy .env.example to .env only if .env is absent, fill your
+OpenAI and Langfuse credentials, then run:
+.\.venv\Scripts\python.exe drug_discovery.py --mode demo
+.\.venv\Scripts\python.exe drug_discovery.py --mode comparison --repeats 3
+Live requests incur API usage and upload prompts/answers to Langfuse.
+Exit codes: 0 passing gate; 2 failed gate (or invalid CLI); 1 runtime error.
+No actual .env, local results, or virtual environment is included.

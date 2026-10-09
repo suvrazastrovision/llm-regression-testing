@@ -1,0 +1,12 @@
+[project]
+name = "vta-drug-discovery-evaluation"
+version = "0.1.0"
+description = "Live VTA drug-discovery regression testing with OpenAI and Langfuse"
+readme = "README.md"
+requires-python = ">=3.10,<4"
+dependencies = [
+    "openai>=2.0.0,<3",
+    "python-dotenv>=1.0.0,<2",
+    "pydantic>=2.0.0,<3",
+    "langfuse>=4.0.0,<5",
+]

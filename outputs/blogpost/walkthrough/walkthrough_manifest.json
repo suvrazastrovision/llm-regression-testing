@@ -1,0 +1,6 @@
+{
+  "source_commit": "00b0f0315cab6047f1e2f366e7cc57930cf479a3",
+  "prepared_on": "2026-10-09",
+  "main_script_sha256": "7a42e721b5bc7ba3ac8e9f378fe5682c49f37cfdb47ed91d4ca92f9cba194993",
+  "validation": "20 existing offline tests passed; live API calls not run for this revision"
+}

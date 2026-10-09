@@ -4,8 +4,6 @@
 .venv/
 __pycache__/
 results/
-# Share output artifacts except Word documents.
-/outputs/**/*.docx
 live-results*/
 
 # Publish only the reviewed sample and its explanation.
