@@ -4,7 +4,11 @@
 .venv/
 __pycache__/
 results/
-outputs/
+# Publish only the walkthrough ZIP; keep other generated artifacts local.
+/outputs/*
+!/outputs/blogpost/
+/outputs/blogpost/*
+!/outputs/blogpost/LLM_Regression_Testing_Walkthrough.zip
 live-results*/
 
 # Publish only the reviewed sample and its explanation.
